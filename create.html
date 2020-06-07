@@ -1,0 +1,343 @@
+<html>
+<head>
+<script src='config.js'></script>
+<script src='pieces.js'></script>
+<style>
+/*Dim2*/
+table {
+    border: 1px solid black;
+    margin: 5px;
+    text-align: center;
+    color: blue;
+}
+td {
+    border: 1px dotted black;
+    height: 30px;
+    width: 30px;
+    text-align: center;
+    font-size: 1.3em;
+    padding: 0px 0px 0px 0px;
+}
+tr{
+    color:black;
+}
+/*Dim3*/
+.dim3{
+    text-align: center;
+    font-weight: bold;
+    color: red;
+    justify-content: space-around;
+}
+caption{
+    text-align: center;
+}
+/*Dim0*/
+th{
+    font-weight: normal;
+    color: green;
+}
+p{
+    padding: 0px;
+    margin: 0px;
+    font-size: .75em;
+}
+.normDiv{
+    display: flex;
+    flex-direction: column;
+    font-weight: normal;
+    color: black;
+    justify-content: flex-start;
+    width: 20%;
+    text-align: left;
+}
+.defDiv{
+    display: flex;
+    flex-direction: row;
+}
+.pieceLabel{
+    font-size: 1.5em;
+    height: 1.5em;
+    width: 1.5em;
+    text-align: center;
+    vertical-align: top;
+    padding: 0px 0px 0px 0px;
+}
+hr{
+    margin-top: 5px;
+    margin-bottom: 2px;
+}
+</style>
+</head>
+<body onload='onload()' style='display: flex; flex-direction: row;'>
+    <div class='normDiv'>
+        <div style='display:flex; flex-direction: row;'>
+            <input type='number' id='dim0' value='3' min='1' max='99' oninput='display.validate(0)'>
+            <input type='number' id='dim1' value='3' min='1' max='99' oninput='display.validate(1)'>
+            <input type='number' id='dim2' value='5' min='1' max='99' oninput='display.validate(2)'>
+            <input type='number' id='dim3' value='5' min='1' max='99' oninput='display.validate(3)'>
+            <button onclick='display.reload()'>Update</button>
+        </div>
+        <div class='defDiv'>
+            Pawns - Dim: 
+            <input id='pawnDim' type='number' value='2' min='0' max='3'>
+            Dir: <select id='pawnDir'><option value='1'>Positive</option><option value='-1'>Negative</option></select>
+        </div>
+        <div class='defDiv'><input type="file" id='cFile' style='width: 70%;'><a id="download">Download</a></div>
+        <p><span style="color: red;">a</span>,<span style="color: blue;">b</span>,<span>c</span>,<span style="color: green;">d</span></p>
+        <p>Spaces: <span id='spaces'></span></p>
+        <h3 style='color: red; display: none;' id='pawnSwap'>Click a piece below to swap for your pawn...</h3>
+        <div id='info' class='normDiv' style='width: 100%;'></div>
+    </div>
+    <div id='gameArea' style='display: flex; flex-direction: row; width: 80%;'></div>
+<script>
+
+var board = {};
+function onload(){
+    display.definitions();
+    display.star();
+}
+create.htmlBoard = function(){
+    var a;
+    for (a of board){
+        var table = document.createElement('table');
+        var b;
+        for (b of board){
+            var row = document.createElement('tr');
+        }
+    }
+}
+
+var display = {
+'html':function(){
+    document.getElementById('gameArea').innerHTML = '';
+    var a;
+    for (a=0;a<config.size[0];a++){
+        var div = document.createElement('div');
+        div.id = 'dim3' + a;
+        div.setAttribute('class','dim3');
+        div.innerHTML = a + 'a';
+        var b;
+        for (b=0;b<config.size[1];b++){
+            var table = document.createElement('table');
+            table.id = 'dim2'+b;
+            var tablelabel = document.createElement('caption');
+            tablelabel.innerHTML = b + 'b';
+            table.appendChild(tablelabel);
+            var e;
+            var labelRow = document.createElement('tr');
+            var blankSpace = document.createElement('th');
+            labelRow.appendChild(blankSpace);
+            for (e=0;e<config.size[3];e++){
+                var columnlabel = document.createElement('th');
+                columnlabel.innerHTML = e + 'd';
+                labelRow.appendChild(columnlabel);
+            }
+            table.appendChild(labelRow);
+            var c;
+            for (c=0;c<config.size[2];c++){
+                var row = document.createElement('tr');
+                row.id = 'dim1'+c;
+                row.innerHTML = c + 'c';
+                var d;
+                for (d=0;d<config.size[3];d++){
+                    var td = document.createElement('td');
+                    td.id = [a,b,c,d];
+                    td.setAttribute('onclick','display.click(['+td.id+'])');
+                    if (typeof(board[[a,b,c,d]]) != 'undefined'){
+                        var piece = board[[a,b,c,d]];
+                        td.innerHTML = String.fromCharCode(p[piece.piece][piece.team]);
+                    }
+                    row.appendChild(td);
+                }
+                table.appendChild(row);
+            }
+            div.appendChild(table);
+        }
+        document.getElementById('gameArea').appendChild(div);
+    }
+},'highlight':function(coords){
+    document.getElementById(coords).style = 'background-color: lightblue;';
+},'unhighlight':function(coords){
+    document.getElementById(coords).style = 'background-color: white;';
+},'click':function(coords){
+    // show moves
+    if (this.pieceSelected){
+        // piece selected, click anywhere
+        var i;
+        for (i of this.moves){
+            this.unhighlight(i);
+        }
+        if (JSON.stringify(coords) == JSON.stringify(this.origCoords)){
+            // piece selected, click on piece again (delete)
+            delete board[coords];
+            document.getElementById(coords).innerHTML = '';
+        }
+        this.pieceSelected = false;
+    } else {
+        if (typeof(board[coords]) != 'undefined'){
+            // no piece selected, click on piece
+            this.piece = board[coords];
+            this.origCoords = [...coords];
+            this.moves = p[this.piece.piece].moves(coords,this.piece);
+            var i;
+            for (i of this.moves){this.highlight(i)};
+            this.pieceSelected = true;
+        }
+    }
+    if (this.piece2place && typeof(board[coords]) == 'undefined'){
+        // piece ready to place, empty space clicked
+        board[coords] = JSON.parse(JSON.stringify(this.selectedPiece));
+        document.getElementById(coords).innerHTML = String.fromCharCode(p[this.selectedPiece.piece][this.selectedPiece.team]);
+        downloadC();
+        document.getElementById(this.selectedPiece.piece + this.selectedPiece.team).style = 'background-color: buttonface;'
+        this.piece2place = false;
+    }
+},'pieceSelected':false,
+'definitions':function(){
+    document.getElementById('info').innerHTML = '';
+    p.turncoat.def = 'Can be moved by either team. ' + p[config.turncoat].def;
+    var i;
+    for (i of config.displayOrder){
+        var row = document.createElement('div');
+        var white = document.createElement('button');
+        white.innerHTML = String.fromCharCode(p[i].w);
+        white.setAttribute('class','pieceLabel');
+        white.setAttribute('onclick','display.selectPiece("'+i+'","w")');
+        white.id = i + 'w';
+        var black = document.createElement('button');
+        black.innerHTML = String.fromCharCode(p[i].b);
+        black.setAttribute('class','pieceLabel');
+        black.setAttribute('onclick','display.selectPiece("'+i+'","b")');
+        black.id = i + 'b';
+        var label = document.createElement('div');
+        label.innerHTML = i + ' - ' + p[i].def;
+        row.appendChild(white);
+        row.appendChild(black);
+        row.appendChild(label);
+        row.setAttribute('class','defDiv');
+        document.getElementById('info').appendChild(row);
+        var split = document.createElement('hr');
+        document.getElementById('info').appendChild(split);
+    }
+},'reload':function(){
+    board = {};
+    config.size = [
+        Number(document.getElementById('dim0').value),
+        Number(document.getElementById('dim1').value),
+        Number(document.getElementById('dim2').value),
+        Number(document.getElementById('dim3').value),
+    ]
+    display.html();
+    document.getElementById('spaces').innerHTML = display.spaces();
+    p.turncoat.def = 'Can be moved by either team. ' + p[config.turncoat].def;
+},'configs':function(){
+    var i;
+    for (i in create.team){
+        var option = document.createElement('option');
+        option.innerHTML = i;
+        document.getElementById('config').appendChild(option);
+    }
+},'specialConditions':function(coords){
+    if (this.piece.piece == 'pawn'){
+        if (this.piece.direction == 1){
+            if (coords[this.piece.dim] == config.size[this.piece.dim]-1){
+                this.pawnEnd = true;
+                document.getElementById('pawnSwap').style = 'color: red; display: block;'
+            }
+        } else {
+            if (coords[this.piece.dim] == 0){
+                this.pawnEnd = true;
+                document.getElementById('pawnSwap').style = 'color: red; display: block;'
+            }
+        }
+    }
+    // star
+    this.star();
+},'pawnSwitch':function(pieceName){
+    if (this.pawnEnd){
+        board[this.newCoords] = {'piece':pieceName,'team':this.piece.team};
+        document.getElementById(this.newCoords).innerHTML = String.fromCharCode(p[pieceName][this.piece.team]);
+    }
+    this.pawnEnd = false;
+    document.getElementById('pawnSwap').style = 'color: red; display: none;'
+},'star':function(){
+    p.star.moveSet = [];
+    while (p.star.moveSet.length < config.star.spaces){
+        var newMove = [
+            randBetween(0,config.size[0]-1),
+            randBetween(0,config.size[1]-1),
+            randBetween(0,config.size[2]-1),
+            randBetween(0,config.size[3]-1)
+        ];
+        if (typeof(board[newMove]) == 'undefined'){
+            p.star.moveSet.push([...newMove]);
+        }
+    }
+},'selectPiece':function(piece,team){
+    display.selectedPiece = {'piece':piece,'team':team};
+    document.getElementById(piece + team).style = 'background-color: lightblue;'
+    if (piece == 'pawn'){
+        display.selectedPiece.dim = Number(document.getElementById('pawnDim').value);
+        display.selectedPiece.direction = Number(document.getElementById('pawnDir').value);
+    }
+    this.piece2place = true;
+},'validate':function(num){
+    var dims = [
+        Number(document.getElementById('dim0').value),
+        Number(document.getElementById('dim1').value),
+        Number(document.getElementById('dim2').value),
+        Number(document.getElementById('dim3').value),
+    ]
+    var spaces = dims[0]*dims[1]*dims[2]*dims[3];
+    if (spaces > 4096){
+        document.getElementById('dim'+num).value = Math.floor(4096/(spaces/dims[num]));
+    }
+    dims = [
+        Number(document.getElementById('dim0').value),
+        Number(document.getElementById('dim1').value),
+        Number(document.getElementById('dim2').value),
+        Number(document.getElementById('dim3').value),
+    ]
+    spaces = dims[0]*dims[1]*dims[2]*dims[3];
+    document.getElementById('spaces').innerHTML = spaces;
+},'spaces':function(){
+    return config.size[0]*config.size[1]*config.size[2]*config.size[3];
+}
+};
+
+var example = {
+    'pawn':{'piece':'pawn','team':'b','dim':0,'direction':1},
+    'rook':{'piece':'rook','team':'b'},
+    'god':{'piece':'god','team':'b'},
+}
+function randBetween(l,h){
+    return Math.floor(Math.random()*(h+1-l)+l);
+}
+// store uploaded character in variable c
+const parsed = jsonText => JSON.parse(jsonText);
+const fr = new FileReader();
+function handleFileSelect (evt){
+    fr.readAsText(evt.target.files[0])
+}
+fr.onload = e => {
+    var objy
+    objy = parsed(e.target.result);
+    board = objy.board;
+    config = objy.config;
+    display.html();
+}
+document.getElementById('cFile').addEventListener('change', handleFileSelect, false);
+
+// download character
+function downloadC(){
+    var objy = {};
+    objy.board = board;
+    objy.config = config;
+    var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(objy));
+    var dElement = document.getElementById('download');
+    dElement.setAttribute("href", dataStr);
+    dElement.setAttribute("download", "game.json");
+}
+</script>
+</body>
+</html>
